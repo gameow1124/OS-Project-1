@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <sched.h>
 #include <string.h>
 typedef struct child{
 	int id;
@@ -36,7 +37,14 @@ int main(int argc, char* argv[])
 		policy = 3;
 	printf("%d",policy);
 		
-
+	cpu_set_t mask;
+	CPU_ZERO(&mask);
+	CPU_SET(0, &mask);
+	if(sched_setaffinity(0, sizeof(mask), &mask)<0)
+	{	
+		perror("sched_setaffinity error");
+		return -1;
+	}	
 
 	return 0;
 
