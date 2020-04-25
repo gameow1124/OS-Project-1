@@ -41,6 +41,15 @@ void setIDLE(pid_t pid){
 		exit(EXIT_FAILURE);
 	}
 }
+void setACTIVE(pid_t pid){
+	struct sched_param param;
+	param.sched_priority=0;
+	if(sched_setscheduler(pid,SCHED_OTHER,&param)<0)
+	{
+		perror("setscheduler fail");
+		exit(EXIT_FAILURE);
+	}
+}
 int main(int argc, char* argv[])
 {
 	char policy_name[10];
@@ -72,6 +81,7 @@ int main(int argc, char* argv[])
 		{
 			int status;
 			waitpid(child_q[now_run].pid,&status,0);
+			now_run = -1;
 		}
 
 
@@ -100,7 +110,26 @@ int main(int argc, char* argv[])
 				finish_child++;
 			}
 		}
+		if(now_run == -1)
+		{
+			if(policy == 0)//FIFO
+			{ 
+				for(int j = 0;j < child_num;j++)
+				{
+					if(child_q[j].left_t == 0)
+						continue;
+					now_run = j;
+					break;
+				}
+			}
+			setACTIVE(child_q[now_run].pid);
+			
+				
+		}
+		
 		unittime();
+		if(now_run != -1)
+			child_q[now_run].left_t--;
 		counter++;
 	}
 	return 0;
