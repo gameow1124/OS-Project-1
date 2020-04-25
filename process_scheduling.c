@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
 typedef struct child{
 	char name[100];
 	int rd_t;
@@ -58,6 +59,7 @@ void setACTIVE(pid_t pid){
 		exit(EXIT_FAILURE);
 	}
 }
+
 void fork_child(int who)
 {
 	pid_t pid = fork();
@@ -67,7 +69,6 @@ void fork_child(int who)
 	}
 	else if(pid == 0){
 		setcore(1);
-		setIDLE(getpid());
 		long long start_time, end_time, d_time;
 		int exec_time = child_q[who].ex_t;
 		for(int j = 0;j<exec_time;j++)
@@ -75,9 +76,10 @@ void fork_child(int who)
 		fprintf(stderr,"%s %d\n", child_q[who].name, getpid());
 		exit(0);
 	}
-	
+	setIDLE(pid);
 	child_q[who].pid = pid;
 }
+
 int main(int argc, char* argv[])
 {
 	char policy_name[10];
