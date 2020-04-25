@@ -34,7 +34,12 @@ void unittime()
 	for(i=0;i<1000000UL;i++);
 }
 
-
+int compare(const void *a, const void *b)
+{
+	child* a1 = (child *)a;
+	child* b1 = (child *)b;
+	return (a1->rd_t - b1->rd_t);
+}
 void setIDLE(pid_t pid){
 	struct sched_param param;
 	param.sched_priority=0;
@@ -62,13 +67,12 @@ void fork_child(int who)
 	}
 	else if(pid == 0){
 		setcore(1);
-		setACTIVE(getpid());
+		setIDLE(getpid());
 		long long start_time, end_time, d_time;
 		int exec_time = child_q[who].ex_t;
 		for(int j = 0;j<exec_time;j++)
 			unittime();
-		printf("finish");
-		printf("%s %d\n", child_q[who].name, getpid());
+		fprintf(stderr,"%s %d\n", child_q[who].name, getpid());
 		exit(0);
 	}
 	
@@ -93,11 +97,12 @@ int main(int argc, char* argv[])
 		policy = 2;
 	else
 		policy = 3;
-	printf("%d",policy);
+	fprintf(stderr,"%s\n",policy_name);
 	setcore(0);
 	int finish_child = 0;
 	int counter = 0;
 	int now_run = -1;
+	qsort(child_q, child_num, sizeof(child),compare);
 	while(finish_child != child_num)
 	{
 		if(now_run != -1 && child_q[now_run].left_t == 0)
@@ -113,7 +118,7 @@ int main(int argc, char* argv[])
 		{
 			if(child_q[i].rd_t == counter)
 			{
-				child_q[i].left_t = child_q[i].ex_t;
+				fork_child(i);
 			}
 		}
 		if(now_run == -1)
@@ -126,7 +131,8 @@ int main(int argc, char* argv[])
 						continue;
 					now_run = j;
 					child_q[j].left_t = child_q[j].ex_t;
-					fork_child(now_run);
+					setACTIVE(child_q[now_run].pid);
+					fprintf(stderr,"now child = %s\n",child_q[j].name);
 					break;
 				}
 			}
@@ -138,7 +144,6 @@ int main(int argc, char* argv[])
 		if(now_run != -1)
 			child_q[now_run].left_t--;
 		counter++;
-		printf("nowrun = %d\n",now_run);
 	}
 	return 0;
 
