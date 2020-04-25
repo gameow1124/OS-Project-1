@@ -14,6 +14,8 @@ typedef struct child{
 	pid_t pid;
 }child;
 
+child child_q[100];
+
 int setcore(int core){
 	cpu_set_t mask;
 	CPU_ZERO(&mask);
@@ -31,6 +33,7 @@ void unittime()
 	volatile unsigned long i;
 	for(i=0;i<1000000UL;i++);
 }
+
 
 void setIDLE(pid_t pid){
 	struct sched_param param;
@@ -50,17 +53,37 @@ void setACTIVE(pid_t pid){
 		exit(EXIT_FAILURE);
 	}
 }
+void fork_child(int who)
+{
+	pid_t pid = fork();
+	if(pid<0){
+		perror("fork error");
+		exit(EXIT_FAILURE);
+	}
+	else if(pid == 0){
+		setcore(1);
+		setACTIVE(getpid());
+		long long start_time, end_time, d_time;
+		int exec_time = child_q[who].ex_t;
+		for(int j = 0;j<exec_time;j++)
+			unittime();
+		printf("finish");
+		printf("%s %d\n", child_q[who].name, getpid());
+		exit(0);
+	}
+	
+	child_q[who].pid = pid;
+}
 int main(int argc, char* argv[])
 {
 	char policy_name[10];
 	int child_num;
 	int policy = 0;
-	child child_q[100];
 	scanf("%s",policy_name);
 	scanf("%d",&child_num);
 	for(int i = 0;i < child_num;i++){
 		scanf("%s%d%d",child_q[i].name, &child_q[i].rd_t, &child_q[i].ex_t);
-		child_q[i].left_t = child_q[i].ex_t;
+		child_q[i].left_t = -1;
 	}
 	if(strcmp(policy_name, "FIFO") == 0)
 		policy = 0;
@@ -82,6 +105,7 @@ int main(int argc, char* argv[])
 			int status;
 			waitpid(child_q[now_run].pid,&status,0);
 			now_run = -1;
+			finish_child++;
 		}
 
 
@@ -89,25 +113,7 @@ int main(int argc, char* argv[])
 		{
 			if(child_q[i].rd_t == counter)
 			{
-				pid_t pid = fork();
-				if(pid<0){
-					perror("fork error");
-					exit(EXIT_FAILURE);
-				}
-				else if(pid == 0){
-					setcore(1);
-					setIDLE(getpid());
-					long long start_time, end_time, d_time;
-					int exec_time = child_q[i].ex_t;
-					for(int j = 0;j<exec_time;j++)
-						unittime();
-					printf("finish");
-					printf("%s %d\n", child_q[i].name, getpid());
-					exit(0);
-				}
-				
-				child_q[i].pid = pid;
-				finish_child++;
+				child_q[i].left_t = child_q[i].ex_t;
 			}
 		}
 		if(now_run == -1)
@@ -116,13 +122,14 @@ int main(int argc, char* argv[])
 			{ 
 				for(int j = 0;j < child_num;j++)
 				{
-					if(child_q[j].left_t == 0)
+					if(child_q[j].left_t == 0||child_q[j].rd_t > counter)
 						continue;
 					now_run = j;
+					child_q[j].left_t = child_q[j].ex_t;
+					fork_child(now_run);
 					break;
 				}
 			}
-			setACTIVE(child_q[now_run].pid);
 			
 				
 		}
@@ -131,6 +138,7 @@ int main(int argc, char* argv[])
 		if(now_run != -1)
 			child_q[now_run].left_t--;
 		counter++;
+		printf("nowrun = %d\n",now_run);
 	}
 	return 0;
 
