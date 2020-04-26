@@ -12,6 +12,7 @@ typedef struct child{
 	int rd_t;
 	int ex_t;
 	int left_t;
+	int start;
 	long long start_sec;
 	long long start_nsec;
 	long long end_sec;
@@ -94,7 +95,8 @@ int main(int argc, char* argv[])
 	setACTIVE(getpid());
 	for(int i = 0;i < child_num;i++){
 		scanf("%s%d%d",child_q[i].name, &child_q[i].rd_t, &child_q[i].ex_t);
-		child_q[i].left_t = -1;
+		child_q[i].left_t = child_q[i].ex_t;
+		child_q[i].start = -1;
 	}
 	if(strcmp(policy_name, "FIFO") == 0)
 		policy = 0;
@@ -141,9 +143,8 @@ int main(int argc, char* argv[])
 					continue;
 					}
 					now_run = j;
-					if(child_q[now_run].left_t == -1){
-						fprintf(stderr,"why");
-						child_q[now_run].left_t = child_q[now_run].ex_t;
+					if(child_q[now_run].start == -1){
+						child_q[now_run].start = 1;
 						setACTIVE(child_q[now_run].pid);
 						syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
 					}
@@ -171,7 +172,7 @@ int main(int argc, char* argv[])
 					if(child_q[j].left_t == 0||child_q[j].rd_t > counter)
 						continue;
 					now_run = j;
-					child_q[now_run].left_t = child_q[now_run].ex_t;
+					child_q[now_run].start = 1;
 					setACTIVE(child_q[now_run].pid);
 					fprintf(stderr,"now child = %s\n",child_q[now_run].name);
 					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
@@ -196,7 +197,7 @@ int main(int argc, char* argv[])
 				if(min_id != -1)
 				{
 					now_run = min_id;
-					child_q[now_run].left_t = child_q[now_run].ex_t;
+					child_q[now_run].start = 1;
 					setACTIVE(child_q[now_run].pid);
 					fprintf(stderr,"now child = %s\n",child_q[now_run].name);
 					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
@@ -204,6 +205,7 @@ int main(int argc, char* argv[])
 				
 				
 			}//policy=2
+			
 			
 				
 		}
@@ -220,8 +222,8 @@ int main(int argc, char* argv[])
 						continue;
 					}
 					now_run = j;
-					if(child_q[now_run].left_t == -1){
-						child_q[now_run].left_t = child_q[now_run].ex_t;
+					if(child_q[now_run].start == 0){
+						child_q[now_run].start = 1;
 						setACTIVE(child_q[now_run].pid);
 						syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
 					}
