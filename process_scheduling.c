@@ -78,7 +78,7 @@ void fork_child(int who)
 		int exec_time = child_q[who].ex_t;
 		for(int j = 0;j<exec_time;j++)
 			unittime();
-		fprintf(stderr,"finish %s %d\n", child_q[who].name, getpid());
+		fprintf(stderr,"%s %d\n", child_q[who].name, getpid());
 		exit(0);
 	}
 	child_q[who].pid = pid;
@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
 		policy = 2;
 	else
 		policy = 3;
-	fprintf(stderr,"%s\n",policy_name);
+	//fprintf(stderr,"%s\n",policy_name);
 	setcore(0);
 	int finish_child = 0;
 	int counter = 0;
@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
 					}
 					else
 						setACTIVE(child_q[now_run].pid);
-					fprintf(stderr,"finish and change now child = %s\n",child_q[now_run].name);
+					//fprintf(stderr,"finish and change now child = %s\n",child_q[now_run].name);
 					t_q = 0;
 					changeflag = 1;
 					break;
@@ -174,7 +174,7 @@ int main(int argc, char* argv[])
 					now_run = j;
 					child_q[now_run].start = 1;
 					setACTIVE(child_q[now_run].pid);
-					fprintf(stderr,"now child = %s\n",child_q[now_run].name);
+					//fprintf(stderr,"now child = %s\n",child_q[now_run].name);
 					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
 					t_q = 0;
 					break;
@@ -199,8 +199,34 @@ int main(int argc, char* argv[])
 					now_run = min_id;
 					child_q[now_run].start = 1;
 					setACTIVE(child_q[now_run].pid);
-					fprintf(stderr,"now child = %s\n",child_q[now_run].name);
+					//fprintf(stderr,"now child = %s\n",child_q[now_run].name);
 					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
+				}
+				
+				
+			}//policy=2
+			if(policy == 3)
+			{
+				int min_ex = -1;
+				int min_id = -1;
+				for(int j = 0;j < child_num;j++)
+				{
+					if(child_q[j].left_t == 0||child_q[j].rd_t > counter)
+						continue;
+					if(min_ex == -1 || child_q[j].left_t < min_ex)
+					{
+						min_ex = child_q[j].left_t;
+						min_id = j;
+					}
+				}
+				if(min_id != -1)
+				{
+					now_run = min_id;
+					setACTIVE(child_q[now_run].pid);
+					//fprintf(stderr,"now child = %s\n",child_q[now_run].name);
+					if(child_q[now_run].start == -1)
+						syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
+					child_q[now_run].start = 1;
 				}
 				
 				
@@ -209,37 +235,62 @@ int main(int argc, char* argv[])
 			
 				
 		}
-		else if(now_run > -1 && t_q == 501)
+		else if(now_run > -1 && t_q == 501 && policy == 1)
 		{
-			if(policy==1){
-				setIDLE(child_q[now_run].pid);
-				int j = (now_run + 1)%child_num;
-				int changeflag = 0;
-				while(j != now_run)
-				{
-					if(child_q[j].left_t == 0||child_q[j].rd_t > counter){
-						j = (j + 1)%child_num;
-						continue;
-					}
-					now_run = j;
-					if(child_q[now_run].start == 0){
-						child_q[now_run].start = 1;
-						setACTIVE(child_q[now_run].pid);
-						syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
-					}
-					else
-						setACTIVE(child_q[now_run].pid);
-					fprintf(stderr,"change now child = %s\n",child_q[now_run].name);
-					t_q = 0;
-					changeflag = 1;
-					break;
+			setIDLE(child_q[now_run].pid);
+			int j = (now_run + 1)%child_num;
+			int changeflag = 0;
+			while(j != now_run)
+			{
+				if(child_q[j].left_t == 0||child_q[j].rd_t > counter){
+					j = (j + 1)%child_num;
+					continue;
 				}
-				if(!changeflag)
-				{
+				now_run = j;
+				if(child_q[now_run].start == 0){
+					child_q[now_run].start = 1;
 					setACTIVE(child_q[now_run].pid);
-					t_q = 0;
+					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
 				}
-			}///policy1
+				else
+					setACTIVE(child_q[now_run].pid);
+				//fprintf(stderr,"change now child = %s\n",child_q[now_run].name);
+				t_q = 0;
+				changeflag = 1;
+				break;
+			}
+			if(!changeflag)
+			{
+				setACTIVE(child_q[now_run].pid);
+				t_q = 0;
+			}
+		}
+		else if(now_run != -1 && policy == 3)
+		{
+			int min_ex = -1;
+			int min_id = -1;
+			for(int j = 0;j < child_num;j++)
+			{
+				if(child_q[j].left_t == 0||child_q[j].rd_t > counter)
+					continue;
+				if(min_ex == -1 || child_q[j].left_t < min_ex)
+				{
+					min_ex = child_q[j].left_t;
+					min_id = j;
+				}
+			}
+			if(min_id != -1 && min_id != now_run)
+			{
+				setIDLE(child_q[now_run].pid);
+				now_run = min_id;
+				setACTIVE(child_q[now_run].pid);
+				//fprintf(stderr,"change now child = %s\n",child_q[now_run].name);
+				if(child_q[now_run].start == -1)
+					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
+				child_q[now_run].start = 1;
+			}
+
+
 		}	
 		unittime();
 		if(now_run != -1)
