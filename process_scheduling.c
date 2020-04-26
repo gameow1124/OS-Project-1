@@ -235,7 +235,7 @@ int main(int argc, char* argv[])
 			
 				
 		}
-		else if(now_run > -1 && t_q == 501 && policy == 1)
+		else if(now_run > -1 && t_q == 500 && policy == 1)
 		{
 			setIDLE(child_q[now_run].pid);
 			int j = (now_run + 1)%child_num;
