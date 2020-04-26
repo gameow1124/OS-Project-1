@@ -141,15 +141,15 @@ int main(int argc, char* argv[])
 					continue;
 					}
 					now_run = j;
-					if(child_q[j].left_t == -1){
+					if(child_q[now_run].left_t == -1){
 						fprintf(stderr,"why");
-						child_q[j].left_t = child_q[j].ex_t;
+						child_q[now_run].left_t = child_q[now_run].ex_t;
 						setACTIVE(child_q[now_run].pid);
-						syscall(333, &child_q[j].start_sec,&child_q[j].start_nsec);
+						syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
 					}
 					else
 						setACTIVE(child_q[now_run].pid);
-					fprintf(stderr,"dead change now child = %s\n",child_q[j].name);
+					fprintf(stderr,"finish and change now child = %s\n",child_q[now_run].name);
 					t_q = 0;
 					changeflag = 1;
 					break;
@@ -171,14 +171,39 @@ int main(int argc, char* argv[])
 					if(child_q[j].left_t == 0||child_q[j].rd_t > counter)
 						continue;
 					now_run = j;
-					child_q[j].left_t = child_q[j].ex_t;
+					child_q[now_run].left_t = child_q[now_run].ex_t;
 					setACTIVE(child_q[now_run].pid);
-					fprintf(stderr,"now child = %s\n",child_q[j].name);
-					syscall(333, &child_q[j].start_sec,&child_q[j].start_nsec);
+					fprintf(stderr,"now child = %s\n",child_q[now_run].name);
+					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
 					t_q = 0;
 					break;
 				}
 			}
+			if(policy == 2)
+			{
+				int min_ex = -1;
+				int min_id = -1;
+				for(int j = 0;j < child_num;j++)
+				{
+					if(child_q[j].left_t == 0||child_q[j].rd_t > counter)
+						continue;
+					if(min_ex == -1 || child_q[j].ex_t < min_ex)
+					{
+						min_ex = child_q[j].ex_t;
+						min_id = j;
+					}
+				}
+				if(min_id != -1)
+				{
+					now_run = min_id;
+					child_q[now_run].left_t = child_q[now_run].ex_t;
+					setACTIVE(child_q[now_run].pid);
+					fprintf(stderr,"now child = %s\n",child_q[now_run].name);
+					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
+				}
+				
+				
+			}//policy=2
 			
 				
 		}
@@ -195,14 +220,14 @@ int main(int argc, char* argv[])
 						continue;
 					}
 					now_run = j;
-					if(child_q[j].left_t == -1){
-						child_q[j].left_t = child_q[j].ex_t;
+					if(child_q[now_run].left_t == -1){
+						child_q[now_run].left_t = child_q[now_run].ex_t;
 						setACTIVE(child_q[now_run].pid);
-						syscall(333, &child_q[j].start_sec,&child_q[j].start_nsec);
+						syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
 					}
 					else
 						setACTIVE(child_q[now_run].pid);
-					fprintf(stderr,"change now child = %s\n",child_q[j].name);
+					fprintf(stderr,"change now child = %s\n",child_q[now_run].name);
 					t_q = 0;
 					changeflag = 1;
 					break;
@@ -212,7 +237,7 @@ int main(int argc, char* argv[])
 					setACTIVE(child_q[now_run].pid);
 					t_q = 0;
 				}
-			}
+			}///policy1
 		}	
 		unittime();
 		if(now_run != -1)
