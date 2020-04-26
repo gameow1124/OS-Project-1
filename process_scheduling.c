@@ -247,7 +247,7 @@ int main(int argc, char* argv[])
 					continue;
 				}
 				now_run = j;
-				if(child_q[now_run].start == 0){
+				if(child_q[now_run].start == -1){
 					child_q[now_run].start = 1;
 					setACTIVE(child_q[now_run].pid);
 					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
