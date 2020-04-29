@@ -112,6 +112,9 @@ int main(int argc, char* argv[])
 	int counter = 0;
 	int now_run = -1;
 	int t_q = 0;
+	int queue[20];
+	int queuelen = 0;
+	int queueStart = 0;
 	qsort(child_q, child_num, sizeof(child),compare);
 	while(finish_child != child_num)
 	{
@@ -120,6 +123,11 @@ int main(int argc, char* argv[])
 			if(child_q[i].rd_t == counter)
 			{
 				fork_child(i);
+				if(policy == 1)
+				{
+					queue[(queueStart+queuelen)%20] = i;
+					queuelen++;
+				}
 			}
 		}
 
@@ -132,40 +140,13 @@ int main(int argc, char* argv[])
 			sprintf(buff,"[Project1]%d %lld.%09lld %lld.%09lld",child_q[now_run].pid,child_q[now_run].start_sec,child_q[now_run].start_nsec,child_q[now_run].end_sec,child_q[now_run].end_nsec);
 			syscall(334,buff);
 			finish_child++;
-			if(policy == 1)
-			{
-				int changeflag = 0;
-				int j = (now_run + 1)%child_num;
-				while(j != now_run)
-				{
-					if(child_q[j].left_t == 0||child_q[j].rd_t > counter){
-					j = (j + 1)%child_num;
-					continue;
-					}
-					now_run = j;
-					if(child_q[now_run].start == -1){
-						child_q[now_run].start = 1;
-						setACTIVE(child_q[now_run].pid);
-						syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
-					}
-					else
-						setACTIVE(child_q[now_run].pid);
-					//fprintf(stderr,"finish and change now child = %s\n",child_q[now_run].name);
-					t_q = 0;
-					changeflag = 1;
-					break;
-				}
-				if(!changeflag)
-					now_run = -1;
-			}
-			else
-				now_run = -1;
+			now_run = -1;
 		}
 
 
 		if(now_run == -1)
 		{
-			if(policy == 0||policy == 1)//FIFO+RR
+			if(policy == 0)//FIFO+RR
 			{ 
 				for(int j = 0;j < child_num;j++)
 				{
@@ -174,11 +155,27 @@ int main(int argc, char* argv[])
 					now_run = j;
 					child_q[now_run].start = 1;
 					setACTIVE(child_q[now_run].pid);
-					//fprintf(stderr,"now child = %s\n",child_q[now_run].name);
 					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
-					t_q = 0;
 					break;
 				}
+			}
+			if(policy == 1)
+			{
+				if(queuelen != 0)
+				{
+					now_run = queue[queueStart];
+					queueStart++;
+					queueStart = queueStart % 20;
+					queuelen--;
+					setACTIVE(child_q[now_run].pid);
+					if(child_q[now_run].start == -1){
+						child_q[now_run].start = 1;
+						syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
+					}
+					t_q = 0;
+					
+				}
+			
 			}
 			if(policy == 2)
 			{
@@ -238,32 +235,18 @@ int main(int argc, char* argv[])
 		else if(now_run > -1 && t_q == 500 && policy == 1)
 		{
 			setIDLE(child_q[now_run].pid);
-			int j = (now_run + 1)%child_num;
-			int changeflag = 0;
-			while(j != now_run)
-			{
-				if(child_q[j].left_t == 0||child_q[j].rd_t > counter){
-					j = (j + 1)%child_num;
-					continue;
-				}
-				now_run = j;
-				if(child_q[now_run].start == -1){
-					child_q[now_run].start = 1;
-					setACTIVE(child_q[now_run].pid);
-					syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
-				}
-				else
-					setACTIVE(child_q[now_run].pid);
-				//fprintf(stderr,"change now child = %s\n",child_q[now_run].name);
-				t_q = 0;
-				changeflag = 1;
-				break;
+			queue[(queueStart+queuelen)%20] = now_run;
+			queuelen++;
+			now_run = queue[queueStart];
+			queueStart++;
+			queueStart = queueStart%20;
+			queuelen--;
+			setACTIVE(child_q[now_run].pid);
+			if(child_q[now_run].start == -1){
+				child_q[now_run].start = 1;
+				syscall(333, &child_q[now_run].start_sec,&child_q[now_run].start_nsec);
 			}
-			if(!changeflag)
-			{
-				setACTIVE(child_q[now_run].pid);
-				t_q = 0;
-			}
+			t_q = 0;
 		}
 		else if(now_run != -1 && policy == 3)
 		{
